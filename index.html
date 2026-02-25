@@ -1,13 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avatar Debug</title>
+
+<style>
+  body {
+    margin: 0;
+    background: #000;
+    overflow: hidden;
+    font-family: sans-serif;
+  }
+
+  /* Big eyes so we can see movement clearly */
+  .eye {
+    width: 180px;
+    height: 110px;
+    background: white;
+    border-radius: 60% 60% 50% 50%;
+    position: absolute;
+    top: 35%;
+    box-shadow: 0 0 40px rgba(255,255,255,0.9);
+  }
+
+  #eyeL { left: calc(50% - 220px); }
+  #eyeR { left: calc(50% + 40px); }
+
+  .pupil {
+    width: 60px;
+    height: 60px;
+    background: black;
+    border-radius: 50%;
+    position: absolute;
+    top: 25px;
+    left: 60px;
+    transition: transform 0.05s linear;
+  }
+
+  /* Sound pulse */
+  #core {
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,255,0.6), rgba(0,0,0,0));
+    filter: blur(50px);
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0.4;
+  }
+
+  #startBtn, #speakBtn {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 15px 25px;
+    font-size: 20px;
+  }
+
+  #startBtn { bottom: 40px; }
+  #speakBtn { bottom: 100px; }
+</style>
+</head>
+
+<body>
+
+<div id="eyeL" class="eye"><div id="pupilL" class="pupil"></div></div>
+<div id="eyeR" class="eye"><div id="pupilR" class="pupil"></div></div>
+
+<div id="core"></div>
+
+<button id="startBtn">Start</button>
+<button id="speakBtn">Speak Test</button>
+
 <script>
 let audioContext, analyser, dataArray;
 
 document.getElementById("startBtn").onclick = async () => {
   console.log("Start clicked");
 
+  /* --- MOTION PERMISSION --- */
   if (typeof DeviceMotionEvent.requestPermission === "function") {
-    await DeviceMotionEvent.requestPermission();
+    let motion = await DeviceMotionEvent.requestPermission();
+    console.log("Motion permission:", motion);
   }
 
+  /* --- MICROPHONE --- */
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   audioContext = new AudioContext();
   const source = audioContext.createMediaStreamSource(stream);
@@ -23,17 +102,7 @@ document.getElementById("startBtn").onclick = async () => {
 };
 
 /* --- TEST SPEECH BUTTON --- */
-const speakTest = document.createElement("button");
-speakTest.innerText = "Speak Test";
-speakTest.style.position = "absolute";
-speakTest.style.bottom = "100px";
-speakTest.style.left = "50%";
-speakTest.style.transform = "translateX(-50%)";
-speakTest.style.padding = "15px 25px";
-speakTest.style.fontSize = "20px";
-document.body.appendChild(speakTest);
-
-speakTest.onclick = () => {
+document.getElementById("speakBtn").onclick = () => {
   console.log("Speaking…");
   const msg = new SpeechSynthesisUtterance("Hello Andrew, this is a test.");
   speechSynthesis.speak(msg);
@@ -63,3 +132,6 @@ function updateCore() {
   requestAnimationFrame(updateCore);
 }
 </script>
+
+</body>
+</html>
