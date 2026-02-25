@@ -1,6 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debug Test</title>
+</head>
+
+<body style="background:#111; color:white; font-family:sans-serif; text-align:center; padding-top:60px;">
+
+<h2>Debug Test Page</h2>
+<p>If the Start button works, you will see alerts.</p>
+
+<button id="startBtn" style="padding:15px 25px; font-size:20px;">Start</button>
+
 <script>
 document.getElementById("startBtn").onclick = async () => {
   console.log("Start button clicked");
+  alert("Start button clicked");
 
   // Test motion permission
   if (typeof DeviceMotionEvent.requestPermission === "function") {
@@ -27,3 +42,6 @@ document.getElementById("startBtn").onclick = async () => {
   }
 };
 </script>
+
+</body>
+</html>
