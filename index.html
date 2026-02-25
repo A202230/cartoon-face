@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cartoon Face</title>
+<style>
+  body {
+    background: #f0f0f0;
+    text-align: center;
+    font-family: sans-serif;
+  }
+  #face {
+    margin-top: 60px;
+    width: 200px;
+    height: 200px;
+    background: #ffe0b3;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+  }
+  .eye {
+    width: 30px;
+    height: 30px;
+    background: #000;
+    border-radius: 50%;
+    position: absolute;
+    top: 60px;
+  }
+  #eyeL { left: 50px; }
+  #eyeR { right: 50px; }
+  #mouth {
+    width: 60px;
+    height: 20px;
+    background: #900;
+    border-radius: 0 0 40px 40px;
+    position: absolute;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: height 0.1s;
+  }
+  #startBtn {
+    margin-top: 40px;
+    padding: 15px 25px;
+    font-size: 18px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Cartoon Face Demo</h2>
+<div id="face">
+  <div id="eyeL" class="eye"></div>
+  <div id="eyeR" class="eye"></div>
+  <div id="mouth"></div>
+</div>
+
+<button id="startBtn">Start</button>
+
+<script>
+let audioContext, analyser, dataArray;
+
+document.getElementById("startBtn").onclick = async () => {
+  // iPhone motion permission
+  if (typeof DeviceMotionEvent.requestPermission === "function") {
+    await DeviceMotionEvent.requestPermission();
+  }
+
+  // Microphone
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  audioContext = new AudioContext();
+  const source = audioContext.createMediaStreamSource(stream);
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 256;
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+  source.connect(analyser);
+
+  // Start loops
+  requestAnimationFrame(updateMouth);
+  window.addEventListener("deviceorientation", updateEyes);
+
+  // Random speech
+  setInterval(speakRandom, 8000);
+};
+
+function updateMouth() {
+  analyser.getByteFrequencyData(dataArray);
+  let volume = dataArray.reduce((a,b)=>a+b) / dataArray.length;
+  let mouth = document.getElementById("mouth");
+  mouth.style.height = (20 + volume/3) + "px";
+  requestAnimationFrame(updateMouth);
+}
+
+function updateEyes(e) {
+  let tilt = e.gamma; // left-right tilt
+  document.getElementById("eyeL").style.transform = `translateX(${tilt/10}px)`;
+  document.getElementById("eyeR").style.transform = `translateX(${tilt/10}px)`;
+}
+
+function speakRandom() {
+  const phrases = ["Hi!", "Hello!", "Hey there!", "Look at me!"];
+  const msg = new SpeechSynthesisUtterance(
+    phrases[Math.floor(Math.random()*phrases.length)]
+  );
+  speechSynthesis.speak(msg);
+}
+</script>
+
+</body>
+</html>
