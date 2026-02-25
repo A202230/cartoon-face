@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cute Avatar</title>
+<title>Cute Ambient Avatar</title>
 
 <style>
   body {
@@ -164,8 +164,14 @@
 <button id="startBtn">Start</button>
 
 <script>
-/* Particle generation */
+/* DOM refs */
 const particleContainer = document.getElementById("particles");
+const pupilL = document.getElementById("pupilL");
+const pupilR = document.getElementById("pupilR");
+const core   = document.getElementById("core");
+const startBtn = document.getElementById("startBtn");
+
+/* Particles */
 for (let i = 0; i < 80; i++) {
   let p = document.createElement("div");
   p.className = "p";
@@ -175,59 +181,113 @@ for (let i = 0; i < 80; i++) {
   particleContainer.appendChild(p);
 }
 
-let audioContext, analyser, dataArray;
+/* Audio + mic + ambient */
+let audioContext = null;
+let analyser = null;
+let dataArray = null;
+let ambientOsc = null;
+let ambientGain = null;
+let micStream = null;
+
 let lastSpeak = 0;
+let audioLoopStarted = false;
 
-document.getElementById("startBtn").onclick = async () => {
-  if (typeof DeviceMotionEvent.requestPermission === "function") {
-    await DeviceMotionEvent.requestPermission();
+startBtn.onclick = async () => {
+  try {
+    if (typeof DeviceMotionEvent !== "undefined" &&
+        typeof DeviceMotionEvent.requestPermission === "function") {
+      try { await DeviceMotionEvent.requestPermission(); } catch(e) {}
+    }
+
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
+    /* Microphone */
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const micSource = audioContext.createMediaStreamSource(micStream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    micSource.connect(analyser);
+
+    /* Ambient deep tone */
+    ambientOsc = audioContext.createOscillator();
+    ambientGain = audioContext.createGain();
+    ambientOsc.type = "sine";
+    ambientOsc.frequency.setValueAtTime(140, audioContext.currentTime); // deep-ish
+    ambientGain.gain.setValueAtTime(0.12, audioContext.currentTime);    // gentle level
+    ambientOsc.connect(ambientGain).connect(audioContext.destination);
+    ambientOsc.start();
+
+    /* Motion + loop */
+    window.addEventListener("deviceorientation", handleTilt, true);
+
+    if (!audioLoopStarted) {
+      audioLoopStarted = true;
+      requestAnimationFrame(updateCore);
+    }
+
+    /* First gentle hello to unlock speech on iOS */
+    speak("Hi there… I’m awake…");
+
+    startBtn.style.display = "none";
+  } catch (err) {
+    console.log("Error starting audio/mic:", err);
   }
-
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  audioContext = new AudioContext();
-  const source = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 256;
-  dataArray = new Uint8Array(analyser.frequencyBinCount);
-  source.connect(analyser);
-
-  window.addEventListener("deviceorientation", updateEyes);
-  requestAnimationFrame(updateCore);
-
-  setInterval(idleChatter, 9000);
 };
 
-function updateEyes(e) {
-  let tiltX = e.gamma * 1.2;
-  let tiltY = e.beta * 0.8;
+function handleTilt(e) {
+  const gamma = e.gamma || 0; // left/right
+  const beta  = e.beta  || 0; // front/back
+
+  const tiltX = gamma * 1.2;
+  const tiltY = beta  * 0.8;
 
   pupilL.style.transform = `translate(${tiltX}px, ${tiltY}px)`;
   pupilR.style.transform = `translate(${tiltX}px, ${tiltY}px)`;
 
-  if (Math.abs(e.gamma) > 25 || Math.abs(e.beta) > 25) {
+  /* Ambient tone modulation */
+  if (ambientOsc && ambientGain && audioContext) {
+    const baseFreq = 140;
+    const freq = baseFreq + gamma * 2; // subtle pitch shift
+    const clampedFreq = Math.max(60, Math.min(260, freq));
+    ambientOsc.frequency.setValueAtTime(clampedFreq, audioContext.currentTime);
+
+    const baseGain = 0.12;
+    const gain = baseGain + (Math.abs(beta) / 90) * 0.06; // slightly louder when tilted
+    const clampedGain = Math.max(0.04, Math.min(0.2, gain));
+    ambientGain.gain.setValueAtTime(clampedGain, audioContext.currentTime);
+  }
+
+  if (Math.abs(gamma) > 25 || Math.abs(beta) > 25) {
     reactiveSpeak("Ooh… that tickles…");
   }
 }
 
 function updateCore() {
-  analyser.getByteFrequencyData(dataArray);
-  let volume = dataArray.reduce((a,b)=>a+b) / dataArray.length;
+  if (analyser && dataArray) {
+    analyser.getByteFrequencyData(dataArray);
+    let volume = dataArray.reduce((a,b)=>a+b, 0) / dataArray.length;
 
-  let scale = 1 + volume / 30;
-  core.style.transform = `translateX(-50%) scale(${scale})`;
-  core.style.opacity = 0.3 + (volume / 120);
+    let scale = 1 + volume / 40;
+    core.style.transform = `translateX(-50%) scale(${scale})`;
+    core.style.opacity = 0.3 + (volume / 140);
 
-  if (volume > 40) {
-    reactiveSpeak("Oh… I heard you…");
+    if (volume > 45) {
+      reactiveSpeak("Oh… I heard you…");
+    }
   }
-
   requestAnimationFrame(updateCore);
 }
 
 /* Soft gentle cute idle chatter */
-function idleChatter() {
+setInterval(() => {
   const now = Date.now();
-  if (now - lastSpeak < 4000) return;
+  if (now - lastSpeak < 6000) return;
 
   const lines = [
     "Hi there…",
@@ -237,9 +297,8 @@ function idleChatter() {
     "It’s quiet… but I don’t mind…",
     "Hehe…"
   ];
-
   speak(lines[Math.floor(Math.random() * lines.length)]);
-}
+}, 9000);
 
 /* Reactive chatter */
 function reactiveSpeak(line) {
@@ -250,11 +309,18 @@ function reactiveSpeak(line) {
 
 /* Speech engine */
 function speak(text) {
+  if (!("speechSynthesis" in window)) return;
   lastSpeak = Date.now();
+
+  try {
+    window.speechSynthesis.cancel();
+  } catch(e) {}
+
   const msg = new SpeechSynthesisUtterance(text);
   msg.pitch = 1.2;
   msg.rate = 0.95;
-  speechSynthesis.speak(msg);
+  msg.volume = 1.0;
+  window.speechSynthesis.speak(msg);
 }
 </script>
 
