@@ -1,211 +1,29 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Abstract Avatar</title>
-
-<style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    background: #000;
-    font-family: sans-serif;
-  }
-
-  /* --- Background Layers --- */
-
-  #bg1, #bg2, #bg3 {
-    position: absolute;
-    width: 200%;
-    height: 200%;
-    top: -50%;
-    left: -50%;
-    filter: blur(80px);
-    animation: drift 40s linear infinite;
-    z-index: 1;
-  }
-
-  #bg1 { background: radial-gradient(circle, #0ff3, #004); }
-  #bg2 { background: radial-gradient(circle, #f0f3, #400); animation-duration: 60s; }
-  #bg3 { background: radial-gradient(circle, #0f03, #040); animation-duration: 90s; }
-
-  @keyframes drift {
-    0% { transform: translate(0,0) scale(1); }
-    50% { transform: translate(10%, -10%) scale(1.1); }
-    100% { transform: translate(0,0) scale(1); }
-  }
-
-  /* --- Particle Field --- */
-
-  #particles {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    pointer-events: none;
-    z-index: 2;
-  }
-
-  .p {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    background: #8ff;
-    border-radius: 50%;
-    opacity: 0.7;
-    animation: floatUp linear infinite;
-    filter: blur(1px);
-  }
-
-  @keyframes floatUp {
-    0% { transform: translateY(110vh); opacity: 0; }
-    10% { opacity: 0.8; }
-    90% { opacity: 0.8; }
-    100% { transform: translateY(-10vh); opacity: 0; }
-  }
-
-  /* --- Eyes --- */
-
-  .eye {
-    width: 140px;
-    height: 80px;
-    background: white;
-    border-radius: 60% 60% 50% 50%;
-    position: absolute;
-    top: 38%;
-    box-shadow: 0 0 35px rgba(255,255,255,0.9);
-    animation: driftEye 6s ease-in-out infinite;
-    z-index: 4;
-  }
-
-  #eyeL { left: calc(50% - 160px); }
-  #eyeR { left: calc(50% + 20px); animation-delay: 1s; }
-
-  @keyframes driftEye {
-    0% { transform: translateY(0); }
-    50% { transform: translateY(8px); }
-    100% { transform: translateY(0); }
-  }
-
-  .pupil {
-    width: 40px;
-    height: 40px;
-    background: black;
-    border-radius: 50%;
-    position: absolute;
-    top: 20px;
-    left: 50px;
-    transition: transform 0.1s;
-  }
-
-  /* Blink */
-  .eye::after {
-    content: "";
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: #000;
-    top: 0;
-    left: 0;
-    border-radius: 60% 60% 50% 50%;
-    transform-origin: top;
-    transform: scaleY(0);
-    animation: blink 7s infinite;
-  }
-
-  @keyframes blink {
-    0%, 92%, 100% { transform: scaleY(0); }
-    95% { transform: scaleY(1); }
-  }
-
-  /* --- Sound-reactive core --- */
-
-  #core {
-    width: 260px;
-    height: 260px;
-    border-radius: 50%;
-    position: absolute;
-    top: 60%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: radial-gradient(circle, rgba(0,255,255,0.5), rgba(0,0,0,0));
-    filter: blur(60px);
-    opacity: 0.5;
-    animation: breathe 5s ease-in-out infinite;
-    z-index: 3;
-  }
-
-  @keyframes breathe {
-    0% { transform: translateX(-50%) scale(1); }
-    50% { transform: translateX(-50%) scale(1.08); }
-    100% { transform: translateX(-50%) scale(1); }
-  }
-
-  #startBtn {
-    position: absolute;
-    bottom: 40px;
-    padding: 15px 25px;
-    font-size: 18px;
-    z-index: 10;
-  }
-</style>
-</head>
-
-<body>
-
-<div id="bg1"></div>
-<div id="bg2"></div>
-<div id="bg3"></div>
-
-<div id="particles"></div>
-
-<div id="eyeL" class="eye"><div class="pupil" id="pupilL"></div></div>
-<div id="eyeR" class="eye"><div class="pupil" id="pupilR"></div></div>
-
-<div id="core"></div>
-
-<button id="startBtn">Start</button>
-
 <script>
-/* --- Particle generation --- */
-const particleContainer = document.getElementById("particles");
-for (let i = 0; i < 80; i++) {
-  let p = document.createElement("div");
-  p.className = "p";
-  p.style.left = Math.random() * 100 + "vw";
-  p.style.animationDuration = 8 + Math.random() * 12 + "s";
-  p.style.animationDelay = Math.random() * 10 + "s";
-  particleContainer.appendChild(p);
-}
-
-/* --- Audio + Motion --- */
-
-let audioContext, analyser, dataArray;
-
 document.getElementById("startBtn").onclick = async () => {
+  console.log("Start button clicked");
+
+  // Test motion permission
   if (typeof DeviceMotionEvent.requestPermission === "function") {
-    let res = await DeviceMotionEvent.requestPermission();
-    console.log("Motion permission:", res);
+    try {
+      let motion = await DeviceMotionEvent.requestPermission();
+      console.log("Motion permission:", motion);
+      alert("Motion permission: " + motion);
+    } catch (e) {
+      console.log("Motion error:", e);
+      alert("Motion error: " + e);
+    }
+  } else {
+    alert("DeviceMotionEvent.requestPermission not supported");
   }
 
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  audioContext = new AudioContext();
-  const source = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 256;
-  dataArray = new Uint8Array(analyser.frequencyBinCount);
-  source.connect(analyser);
-
-  requestAnimationFrame(updateCore);
-  window.addEventListener("deviceorientation", updateEyes);
-
-  setInterval(speakRandom, 8000);
+  // Test microphone
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.log("Microphone OK");
+    alert("Microphone OK");
+  } catch (e) {
+    console.log("Microphone error:", e);
+    alert("Microphone error: " + e);
+  }
 };
-
-function updateCore() {
-  analyser.getByteFrequencyData(dataArray);
-  let volume = dataArray.reduce((a,b)=>a+b) / dataArray.length;
-
-  let core = document.getElementById("core");
-  let scale = 1 + volume / 40;
-  core.style.transform = `translateX(-50%) scale(${
+</script>
