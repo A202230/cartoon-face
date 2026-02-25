@@ -192,6 +192,21 @@ let micStream = null;
 let lastSpeak = 0;
 let audioLoopStarted = false;
 
+/* Speech voices handling */
+let voicesReady = false;
+
+function loadVoices() {
+  const voices = window.speechSynthesis.getVoices();
+  if (voices && voices.length > 0) {
+    voicesReady = true;
+  }
+}
+
+if ("speechSynthesis" in window) {
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+}
+
 startBtn.onclick = async () => {
   try {
     if (typeof DeviceMotionEvent !== "undefined" &&
@@ -307,9 +322,15 @@ function reactiveSpeak(line) {
   speak(line);
 }
 
-/* Speech engine */
+/* Speech engine with voice readiness */
 function speak(text) {
   if (!("speechSynthesis" in window)) return;
+
+  if (!voicesReady) {
+    setTimeout(() => speak(text), 200);
+    return;
+  }
+
   lastSpeak = Date.now();
 
   try {
