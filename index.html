@@ -22,11 +22,12 @@
     left: -50%;
     filter: blur(80px);
     animation: drift 40s linear infinite;
+    z-index: 1;
   }
 
-  #bg1 { background: radial-gradient(circle, #0ff2, #004); }
-  #bg2 { background: radial-gradient(circle, #f0f2, #400); animation-duration: 60s; }
-  #bg3 { background: radial-gradient(circle, #0f02, #040); animation-duration: 90s; }
+  #bg1 { background: radial-gradient(circle, #0ff3, #004); }
+  #bg2 { background: radial-gradient(circle, #f0f3, #400); animation-duration: 60s; }
+  #bg3 { background: radial-gradient(circle, #0f03, #040); animation-duration: 90s; }
 
   @keyframes drift {
     0% { transform: translate(0,0) scale(1); }
@@ -42,54 +43,58 @@
     height: 100%;
     overflow: hidden;
     pointer-events: none;
+    z-index: 2;
   }
 
   .p {
     position: absolute;
-    width: 3px;
-    height: 3px;
-    background: #fff3;
+    width: 6px;
+    height: 6px;
+    background: #8ff;
     border-radius: 50%;
+    opacity: 0.7;
     animation: floatUp linear infinite;
+    filter: blur(1px);
   }
 
   @keyframes floatUp {
-    0% { transform: translateY(100vh); opacity: 0; }
-    10% { opacity: 0.5; }
-    90% { opacity: 0.5; }
+    0% { transform: translateY(110vh); opacity: 0; }
+    10% { opacity: 0.8; }
+    90% { opacity: 0.8; }
     100% { transform: translateY(-10vh); opacity: 0; }
   }
 
   /* --- Eyes --- */
 
   .eye {
-    width: 50px;
-    height: 50px;
+    width: 140px;
+    height: 80px;
     background: white;
-    border-radius: 50%;
+    border-radius: 60% 60% 50% 50%;
     position: absolute;
-    top: 40%;
-    box-shadow: 0 0 25px rgba(255,255,255,0.8);
+    top: 38%;
+    box-shadow: 0 0 35px rgba(255,255,255,0.9);
     animation: driftEye 6s ease-in-out infinite;
+    z-index: 4;
   }
 
-  #eyeL { left: calc(50% - 90px); }
-  #eyeR { left: calc(50% + 40px); animation-delay: 1s; }
+  #eyeL { left: calc(50% - 160px); }
+  #eyeR { left: calc(50% + 20px); animation-delay: 1s; }
 
   @keyframes driftEye {
     0% { transform: translateY(0); }
-    50% { transform: translateY(6px); }
+    50% { transform: translateY(8px); }
     100% { transform: translateY(0); }
   }
 
   .pupil {
-    width: 18px;
-    height: 18px;
+    width: 40px;
+    height: 40px;
     background: black;
     border-radius: 50%;
     position: absolute;
-    top: 16px;
-    left: 16px;
+    top: 20px;
+    left: 50px;
     transition: transform 0.1s;
   }
 
@@ -102,7 +107,7 @@
     background: #000;
     top: 0;
     left: 0;
-    border-radius: 50%;
+    border-radius: 60% 60% 50% 50%;
     transform-origin: top;
     transform: scaleY(0);
     animation: blink 7s infinite;
@@ -116,22 +121,23 @@
   /* --- Sound-reactive core --- */
 
   #core {
-    width: 220px;
-    height: 220px;
+    width: 260px;
+    height: 260px;
     border-radius: 50%;
     position: absolute;
-    top: 58%;
+    top: 60%;
     left: 50%;
     transform: translateX(-50%);
-    background: radial-gradient(circle, rgba(0,255,255,0.4), rgba(0,0,0,0));
-    filter: blur(50px);
-    opacity: 0.4;
+    background: radial-gradient(circle, rgba(0,255,255,0.5), rgba(0,0,0,0));
+    filter: blur(60px);
+    opacity: 0.5;
     animation: breathe 5s ease-in-out infinite;
+    z-index: 3;
   }
 
   @keyframes breathe {
     0% { transform: translateX(-50%) scale(1); }
-    50% { transform: translateX(-50%) scale(1.05); }
+    50% { transform: translateX(-50%) scale(1.08); }
     100% { transform: translateX(-50%) scale(1); }
   }
 
@@ -140,6 +146,7 @@
     bottom: 40px;
     padding: 15px 25px;
     font-size: 18px;
+    z-index: 10;
   }
 </style>
 </head>
@@ -162,11 +169,11 @@
 <script>
 /* --- Particle generation --- */
 const particleContainer = document.getElementById("particles");
-for (let i = 0; i < 40; i++) {
+for (let i = 0; i < 80; i++) {
   let p = document.createElement("div");
   p.className = "p";
   p.style.left = Math.random() * 100 + "vw";
-  p.style.animationDuration = 10 + Math.random() * 20 + "s";
+  p.style.animationDuration = 8 + Math.random() * 12 + "s";
   p.style.animationDelay = Math.random() * 10 + "s";
   particleContainer.appendChild(p);
 }
@@ -177,7 +184,8 @@ let audioContext, analyser, dataArray;
 
 document.getElementById("startBtn").onclick = async () => {
   if (typeof DeviceMotionEvent.requestPermission === "function") {
-    await DeviceMotionEvent.requestPermission();
+    let res = await DeviceMotionEvent.requestPermission();
+    console.log("Motion permission:", res);
   }
 
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -199,31 +207,5 @@ function updateCore() {
   let volume = dataArray.reduce((a,b)=>a+b) / dataArray.length;
 
   let core = document.getElementById("core");
-  let scale = 1 + volume / 60;
-  core.style.transform = `translateX(-50%) scale(${scale})`;
-  core.style.opacity = 0.3 + (volume / 200);
-
-  requestAnimationFrame(updateCore);
-}
-
-function updateEyes(e) {
-  let tiltX = e.gamma / 20;
-  let tiltY = e.beta / 40;
-
-  document.getElementById("pupilL").style.transform =
-    `translate(${tiltX}px, ${tiltY}px)`;
-  document.getElementById("pupilR").style.transform =
-    `translate(${tiltX}px, ${tiltY}px)`;
-}
-
-function speakRandom() {
-  const phrases = ["Hello", "Hi there", "I'm here", "Hey"];
-  const msg = new SpeechSynthesisUtterance(
-    phrases[Math.floor(Math.random()*phrases.length)]
-  );
-  speechSynthesis.speak(msg);
-}
-</script>
-
-</body>
-</html>
+  let scale = 1 + volume / 40;
+  core.style.transform = `translateX(-50%) scale(${
